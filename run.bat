@@ -4,5 +4,5 @@ docker run -d --name buildagent ^
     -e TFS_POOL_NAME=[pool name] ^
     -e TFS_AGENT_NAME=[agent name] ^
     -m 4GB ^
-    -storage-opt "size=100GB" ^
+    -v [your local work storage]:c:\setup\_work ^
     buildagent
