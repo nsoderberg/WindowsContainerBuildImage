@@ -1,0 +1,18 @@
+# escape=`
+FROM mcr.microsoft.com/windows:1809-KB4519338
+
+WORKDIR c:\setup
+
+COPY ExtractZip.ps1 .
+
+SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
+
+# Chrome
+ADD Chromium-77.0.3865.120-x64.zip chromium.zip
+RUN powershell -ExecutionPolicy Bypass -Command .\ExtractZip.ps1 chromium.zip .
+RUN setx /M PATH $($Env:PATH + ';c:\setup\Chromium-77.0.3865.120-x64')
+
+#SHELL ["cmd", "/S", "/C"]
+
+ENTRYPOINT ["c:\setup\Chromium-77.0.3865.120-x64\chrome.exe", "--no-sandbox", "--disable-gpu", "--headless", "--enable-logging", "--dump-dom", "https://www.google.com"]
+#ENTRYPOINT c:\setup\Chromium-77.0.3865.120-x64\chrome.exe --no-sandbox --disable-gpu --headless --enable-logging --dump-dom https://www.google.com

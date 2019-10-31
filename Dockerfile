@@ -1,14 +1,31 @@
 # escape=`
 FROM microsoft/dotnet-framework:4.7.2-sdk-windowsservercore-ltsc2019
+#FROM microsoft/dotnet-framework:4.7.2-20191008-sdk-windowsservercore-ltsc2016
+#FROM mcr.microsoft.com/dotnet/framework/sdk:4.7.2-20191008-windowsservercore-1803
+
+# timesync problem
+#FROM mcr.microsoft.com/dotnet/framework/sdk:4.8-20191008-windowsservercore-1803
+
+# timesync problem
+#FROM mcr.microsoft.com/dotnet/framework/runtime:4.8-20191008-windowsservercore-1803
+
+# headless works, but node gives no such file or directory, lstat 'C:\ContainerMappedDirectories'
+#FROM mcr.microsoft.com/dotnet/framework/runtime:4.8-20191008-windowsservercore-ltsc2016
+
+#FROM mcr.microsoft.com/dotnet/framework/runtime:4.8-20191008-windowsservercore-ltsc2019
+
+#FROM mcr.microsoft.com/dotnet/framework/sdk:4.7.2-windowsservercore-ltsc2016
+#FROM mcr.microsoft.com/windows/servercore:1809
 
 # Set up environment to collect install errors.
 COPY Install.cmd C:\TEMP\
 ADD https://aka.ms/vscollect.exe C:\TEMP\collect.exe
 
 # Install NodeJs and NuGet with Chocolatey
-RUN Install-PackageProvider -Name chocolatey -RequiredVersion 2.8.5.130 -Force; `
-    Install-Package -Name nodejs.install -RequiredVersion 11.6.0 -Force; `
-    Install-Package nuget.commandline -RequiredVersion 5.3.0 -Force
+#RUN Install-PackageProvider -Name chocolatey -RequiredVersion 2.8.5.130 -Force; `
+#    Install-Package nuget.commandline -RequiredVersion 5.3.0 -Force
+
+SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 
 # Install .NET Core SDK
 WORKDIR c:\temp
@@ -85,7 +102,16 @@ COPY ExtractZip.ps1 .
 
 # Copy IntelliTrace files to make CodeCoverage reporting work
 COPY IntelliTrace.zip .
-RUN powershell -Command .\ExtractZip.ps1 .\IntelliTrace.zip C:\temp\buildtools\Common7\IDE\CommonExtensions\Microsoft
+RUN powershell –ExecutionPolicy Bypass -Command .\ExtractZip.ps1 .\IntelliTrace.zip C:\temp\buildtools\Common7\IDE\CommonExtensions\Microsoft
+
+# Add NodeJS
+ADD https://nodejs.org/dist/v10.16.3/node-v10.16.3-win-x86.zip node.zip
+RUN powershell –ExecutionPolicy Bypass -Command .\ExtractZip.ps1 .\node.zip .
+RUN setx /M PATH $($Env:PATH + ';c:\setup\node-v10.16.3-win-x86')
+
+# Add nuget
+ADD https://dist.nuget.org/win-x86-commandline/v5.3.1/nuget.exe c:\setup\nuget\nuget.exe
+RUN setx /M PATH $($Env:PATH + ';c:\setup\nuget')
 
 # Fix SSDT/SQLDB build errors
 RUN nuget install Microsoft.Data.Tools.Msbuild -Version 10.0.61804.210
@@ -98,14 +124,41 @@ RUN copy C:\setup\Microsoft.Data.Tools.Msbuild.10.0.61804.210\lib\net46\* C:\tem
 RUN If (-Not (Test-Path C:\temp\buildtools\Common7\IDE\Extensions\Microsoft\)) { md -path C:\temp\buildtools\Common7\IDE\Extensions\Microsoft\ }
 RUN copy C:\setup\Microsoft.Data.Tools.Msbuild.10.0.61804.210\lib\net46\* C:\temp\buildtools\Common7\IDE\Extensions\Microsoft\
 
+# Chrome
+ADD Chromium-77.0.3865.120-x64.zip chromium.zip
+RUN powershell –ExecutionPolicy Bypass -Command .\ExtractZip.ps1 chromium.zip .
+RUN setx /M PATH $($Env:PATH + ';c:\setup\Chromium-77.0.3865.120-x64')
+
+#COPY karma.conf.js karma.conf.js
+
 # Set agent capabilities
 ENV ServiceFabricSDK="ServiceFabricSDK"`
     visualstudio="visualstudio"
 
+COPY LoadFonts.ps1 .
+RUN echo "C:\setup\LoadFonts.ps1" | Out-File -FilePath $PsHome\Profile.ps1
+
 # Reset the shell.
 SHELL ["cmd", "/S", "/C"]
-RUN powershell -Command .\ExtractZip.ps1 vsts-agent-win-x64-2.158.1.zip .
+RUN powershell –ExecutionPolicy Bypass -Command c:\setup\ExtractZip.ps1 c:\setup\vsts-agent-win-x64-2.158.1.zip .
+
+# Fix missing fonts
+COPY fonts\* c:/windows/fonts/
+COPY fonts\* c:/setup/fonts/
+COPY InstallFonts.ps1 .
+RUN powershell –ExecutionPolicy Bypass -NoProfile -Command .\InstallFonts.ps1
+# COPY fonts\times.ttf c:/windows/fonts/times.ttf
+# RUN powershell –ExecutionPolicy Bypass -NoProfile -Command New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts' -Name 'Times New Roman (TrueType)' -PropertyType String -Value times.ttf
+# COPY fonts\times.ttf c:/windows/fonts/timesi.ttf
+# RUN powershell –ExecutionPolicy Bypass -NoProfile -Command New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts' -Name 'Times New Roman Italic (TrueType)' -PropertyType String -Value timesi.ttf
+# COPY fonts\times.ttf c:/windows/fonts/timesbd.ttf
+# RUN powershell –ExecutionPolicy Bypass -NoProfile -Command New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts' -Name 'Times New Roman Bold (TrueType)' -PropertyType String -Value timesbd.ttf
+# COPY fonts\times.ttf c:/windows/fonts/timesbi.ttf
+# RUN powershell –ExecutionPolicy Bypass -NoProfile -Command New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts' -Name 'Times New Roman Bold Italic (TrueType)' -PropertyType String -Value timesbi.ttf
+
+#COPY StartAgent.ps1 c:\mount
+#COPY StartSqlExpress.ps1 c:\mount
 
 # Configure agent on startup 
-CMD powershell -noexit .\StartAgent.ps1
+CMD powershell –ExecutionPolicy Bypass -noexit .\StartAgent.ps1
 

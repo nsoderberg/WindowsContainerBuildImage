@@ -1,0 +1,20 @@
+# escape=`
+# headless works, but node gives no such file or directory, lstat 'C:\ContainerMappedDirectories'
+FROM mcr.microsoft.com/dotnet/framework/runtime:4.8-20191008-windowsservercore-ltsc2016
+
+SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
+
+WORKDIR c:\temp
+COPY ExtractZip.ps1 .
+
+# Chrome
+ADD Chromium-77.0.3865.120-x64.zip chromium.zip
+RUN powershell –ExecutionPolicy Bypass -Command .\ExtractZip.ps1 chromium.zip .
+RUN setx /M PATH $($Env:PATH + ';c:\temp\Chromium-77.0.3865.120-x64')
+
+COPY StartChrome.ps1 .
+
+# Add proxy since chrome doesn't accept connections from outside localhost
+RUN netsh interface portproxy add v4tov4 listenport=9223 listenaddress=0.0.0.0 connectaddress=127.0.0.1 connectport=9222
+
+CMD powershell –ExecutionPolicy Bypass -noexit .\StartChrome.ps1
