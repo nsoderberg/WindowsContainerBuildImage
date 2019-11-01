@@ -1,5 +1,9 @@
 # escape=`
-FROM microsoft/dotnet-framework:4.7.2-sdk-windowsservercore-ltsc2019
+# unable to get chrome headless to work
+#FROM microsoft/dotnet-framework:4.7.2-sdk-windowsservercore-ltsc2019
+
+FROM mcr.microsoft.com/dotnet/framework/sdk:4.7.2-windowsservercore-ltsc2016
+
 #FROM microsoft/dotnet-framework:4.7.2-20191008-sdk-windowsservercore-ltsc2016
 #FROM mcr.microsoft.com/dotnet/framework/sdk:4.7.2-20191008-windowsservercore-1803
 
@@ -135,29 +139,15 @@ RUN setx /M PATH $($Env:PATH + ';c:\setup\Chromium-77.0.3865.120-x64')
 ENV ServiceFabricSDK="ServiceFabricSDK"`
     visualstudio="visualstudio"
 
-COPY LoadFonts.ps1 .
-RUN echo "C:\setup\LoadFonts.ps1" | Out-File -FilePath $PsHome\Profile.ps1
-
 # Reset the shell.
 SHELL ["cmd", "/S", "/C"]
 RUN powershell –ExecutionPolicy Bypass -Command c:\setup\ExtractZip.ps1 c:\setup\vsts-agent-win-x64-2.158.1.zip .
 
 # Fix missing fonts
-COPY fonts\* c:/windows/fonts/
-COPY fonts\* c:/setup/fonts/
-COPY InstallFonts.ps1 .
-RUN powershell –ExecutionPolicy Bypass -NoProfile -Command .\InstallFonts.ps1
-# COPY fonts\times.ttf c:/windows/fonts/times.ttf
-# RUN powershell –ExecutionPolicy Bypass -NoProfile -Command New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts' -Name 'Times New Roman (TrueType)' -PropertyType String -Value times.ttf
-# COPY fonts\times.ttf c:/windows/fonts/timesi.ttf
-# RUN powershell –ExecutionPolicy Bypass -NoProfile -Command New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts' -Name 'Times New Roman Italic (TrueType)' -PropertyType String -Value timesi.ttf
-# COPY fonts\times.ttf c:/windows/fonts/timesbd.ttf
-# RUN powershell –ExecutionPolicy Bypass -NoProfile -Command New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts' -Name 'Times New Roman Bold (TrueType)' -PropertyType String -Value timesbd.ttf
-# COPY fonts\times.ttf c:/windows/fonts/timesbi.ttf
-# RUN powershell –ExecutionPolicy Bypass -NoProfile -Command New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts' -Name 'Times New Roman Bold Italic (TrueType)' -PropertyType String -Value timesbi.ttf
-
-#COPY StartAgent.ps1 c:\mount
-#COPY StartSqlExpress.ps1 c:\mount
+# COPY fonts\* c:/windows/fonts/
+# COPY fonts\* c:/setup/fonts/
+# COPY InstallFonts.ps1 .
+# RUN powershell –ExecutionPolicy Bypass -NoProfile -Command .\InstallFonts.ps1
 
 # Configure agent on startup 
 CMD powershell –ExecutionPolicy Bypass -noexit .\StartAgent.ps1
